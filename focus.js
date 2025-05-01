@@ -194,6 +194,30 @@
     }
   }
 
+  let currentAudio = null; // Declare currentAudio at the top level
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    muteBtn.textContent = isMuted ? "🔇 已静音" : "🔈 静音";
+    log(isMuted ? "已静音" : "取消静音");
+
+    // 如果静音，暂停当前播放的音频
+    if (isMuted && currentAudio) {
+      currentAudio.pause();
+      log("当前音频已暂停");
+    } else if (!isMuted && currentAudio && !currentAudio.ended) {
+      // 如果取消静音且音频未结束，继续播放音频
+      currentAudio
+        .play()
+        .then(() => {
+          log("音频已继续播放");
+        })
+        .catch((err) => {
+          log("音频继续播放失败: " + err.message);
+        });
+    }
+  }
+
   function playSoundAndThen(url, label, onComplete) {
     if (isPaused) {
       log(`${label} 已暂停，延后播放`);
@@ -201,14 +225,21 @@
       return;
     }
 
+    // 防抖：如果当前有音频正在播放，则不进行新的播放
+    if (currentAudio && !currentAudio.ended) {
+      log(`${label} 正在播放中，跳过新的播放请求`);
+      return;
+    }
+
     notify(label, `即将播放 ${label}`);
     if (isMuted) {
       log(`${label} 静音中，跳过播放`);
-      setTimeout(onComplete, 100); // 跳过播放
+      setTimeout(onComplete, 100); // Skip playback
       return;
     }
 
     const audio = new Audio(url);
+    currentAudio = audio; // Assign the current audio object
     audio
       .play()
       .then(() => {
@@ -309,12 +340,6 @@
     clearTimeout(bTimer);
     stopCountdownUpdater();
     log("已停止所有定时任务");
-  }
-
-  function toggleMute() {
-    isMuted = !isMuted;
-    muteBtn.textContent = isMuted ? "🔇 已静音" : "🔈 静音";
-    log(isMuted ? "已静音" : "取消静音");
   }
 
   function togglePause() {
