@@ -6,6 +6,7 @@
 // @author       Knan
 // @match        *://*/*
 // @grant        none
+// @license           MIT
 // ==/UserScript==
 
 (function () {
