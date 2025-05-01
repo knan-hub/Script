@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         提示音定时器（自定义间隔 + 保存设置 + 自定义声音）
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.8
 // @description  自定义提示音间隔，自定义声音，自动保存设置，支持通知与静音等功能。
 // @author       Knan
 // @match        *://*/*
@@ -19,9 +19,11 @@
     A_MAX: 5,
     B_INTERVAL: 90,
     B_PAUSE: 20,
-    A_PAUSE: 10, // 新增：A 提示音播放后的暂停时间（默认10秒）
+    A_PAUSE: 10,
     A_URL: "https://actions.google.com/sounds/v1/alarms/beep_short.ogg",
     B_URL: "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg",
+    PANEL_X: null,
+    PANEL_Y: null,
   };
 
   let settings = { ...defaultSettings };
@@ -56,51 +58,147 @@
 
   const panel = document.createElement("div");
   panel.style.cssText = `
-            position: fixed; bottom: 20px; right: 20px;
-            background: white; border: 1px solid #ccc;
-            padding: 10px; z-index: 999999;
-            font-size: 14px; font-family: sans-serif;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-            max-width: 280px;
-          `;
+    position: fixed;
+    background: white;
+    border: 1px solid #ccc;
+    padding: 10px;
+    z-index: 999999;
+    font-size: 14px;
+    font-family: sans-serif;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    max-width: 280px;
+    cursor: move;
+    user-select: none;
+    touch-action: none;
+  `;
+
+  // 设置初始位置
+  if (settings.PANEL_X !== null && settings.PANEL_Y !== null) {
+    panel.style.left = `${settings.PANEL_X}px`;
+    panel.style.top = `${settings.PANEL_Y}px`;
+  } else {
+    panel.style.bottom = "20px";
+    panel.style.right = "20px";
+  }
+
   panel.innerHTML = `
-            <strong>提示音定时器</strong><br/>
-            <button id="startBtn">开始</button>
-            <button id="stopBtn">停止</button>
-            <button id="pauseBtn">⏸ 暂停</button>
-            <button id="resetBtn">重置</button>
-            <button id="muteBtn">🔈 静音</button>
-            <button id="notifyBtn">🔔 通知</button>
-            <hr/>
-            <div>
-              <b>A 音间隔设置：</b><br/>
-              A 音间隔：最小 <input id="aMin" type="number" style="width: 40px;" min="1" /> ~
-              最大 <input id="aMax" type="number" style="width: 40px;" min="1" /> 分钟<br/>
-              播放后暂停：<input id="aPause" type="number" style="width: 50px;" min="1" /> 秒
-            </div>
-            <hr/>
-            <div>
-              <b>B 音间隔设置：</b><br/>
-              B 音间隔 <input id="bInt" type="number" style="width: 50px;" min="1" /> 分钟<br/>
-              播放后暂停 <input id="bPause" type="number" style="width: 50px;" min="1" /> 分钟
-            </div>
-            <hr/>
-            <div>
-              <b>声音链接（可选）：</b><br/>
-              A 音 URL：<input id="aUrl" type="text" placeholder="mp3/ogg 链接" style="width: 100%;" /><br/>
-              B 音 URL：<input id="bUrl" type="text" placeholder="mp3/ogg 链接" style="width: 100%;" />
-            </div>
-            <div style="margin-top: 10px;">
-              下次 A 音：<span id="nextA">--</span><br/>
-              下次 B 音：<span id="nextB">--</span>
-            </div>
-            <hr/>
-            <div>
-              <button id="aPreviewBtn">试听 A 音</button>
-              <button id="bPreviewBtn">试听 B 音</button>
-            </div>
-          `;
+    <strong>提示音定时器</strong><br/>
+    <button id="startBtn">开始</button>
+    <button id="stopBtn">停止</button>
+    <button id="pauseBtn">⏸ 暂停</button>
+    <button id="resetBtn">重置</button>
+    <button id="muteBtn">🔈 静音</button>
+    <button id="notifyBtn">🔔 通知</button>
+    <hr/>
+    <div>
+      <b>A 音间隔设置：</b><br/>
+      A 音间隔：最小 <input id="aMin" type="number" style="width: 40px;" min="1" /> ~
+      最大 <input id="aMax" type="number" style="width: 40px;" min="1" /> 分钟<br/>
+      播放后暂停：<input id="aPause" type="number" style="width: 50px;" min="1" /> 秒
+    </div>
+    <hr/>
+    <div>
+      <b>B 音间隔设置：</b><br/>
+      B 音间隔 <input id="bInt" type="number" style="width: 50px;" min="1" /> 分钟<br/>
+      播放后暂停 <input id="bPause" type="number" style="width: 50px;" min="1" /> 分钟
+    </div>
+    <hr/>
+    <div>
+      <b>声音链接（可选）：</b><br/>
+      A 音 URL：<input id="aUrl" type="text" placeholder="mp3/ogg 链接" style="width: 100%;" /><br/>
+      B 音 URL：<input id="bUrl" type="text" placeholder="mp3/ogg 链接" style="width: 100%;" />
+    </div>
+    <div style="margin-top: 10px;">
+      下次 A 音：<span id="nextA">--</span><br/>
+      下次 B 音：<span id="nextB">--</span>
+    </div>
+    <hr/>
+    <div>
+      <button id="aPreviewBtn">试听 A 音</button>
+      <button id="bPreviewBtn">试听 B 音</button>
+    </div>
+  `;
   document.body.appendChild(panel);
+
+  // 添加拖拽功能
+  let isDragging = false;
+  let offsetX, offsetY;
+
+  panel.addEventListener("mousedown", startDrag);
+  panel.addEventListener("touchstart", startDrag, { passive: false });
+
+  function startDrag(e) {
+    // 如果点击的是按钮或输入框，则不拖拽
+    if (e.target.tagName === "BUTTON" || e.target.tagName === "INPUT") {
+      return;
+    }
+
+    e.preventDefault();
+    isDragging = true;
+
+    const rect = panel.getBoundingClientRect();
+    if (e.type === "mousedown") {
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+    } else {
+      offsetX = e.touches[0].clientX - rect.left;
+      offsetY = e.touches[0].clientY - rect.top;
+    }
+
+    // 移除可能存在的bottom/right定位
+    panel.style.bottom = "auto";
+    panel.style.right = "auto";
+
+    document.addEventListener("mousemove", drag);
+    document.addEventListener("touchmove", drag, { passive: false });
+    document.addEventListener("mouseup", endDrag);
+    document.addEventListener("touchend", endDrag);
+  }
+
+  function drag(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+
+    let clientX, clientY;
+    if (e.type === "mousemove") {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    } else {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    }
+
+    // 计算新位置
+    let newX = clientX - offsetX;
+    let newY = clientY - offsetY;
+
+    // 限制在视窗范围内
+    const panelWidth = panel.offsetWidth;
+    const panelHeight = panel.offsetHeight;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    newX = Math.max(0, Math.min(newX, windowWidth - panelWidth));
+    newY = Math.max(0, Math.min(newY, windowHeight - panelHeight));
+
+    panel.style.left = `${newX}px`;
+    panel.style.top = `${newY}px`;
+  }
+
+  function endDrag() {
+    isDragging = false;
+
+    // 保存位置
+    const rect = panel.getBoundingClientRect();
+    settings.PANEL_X = rect.left;
+    settings.PANEL_Y = rect.top;
+    saveSettings();
+
+    document.removeEventListener("mousemove", drag);
+    document.removeEventListener("touchmove", drag);
+    document.removeEventListener("mouseup", endDrag);
+    document.removeEventListener("touchend", endDrag);
+  }
 
   const resetBtn = document.getElementById("resetBtn");
   resetBtn.addEventListener("click", resetSettings);
@@ -121,17 +219,31 @@
       }
     });
 
-    // 恢复时重新设置面板样式
     if (!isMinimized) {
       panel.style.cssText = `
-      position: fixed; bottom: 20px; right: 20px;
-      background: white; border: 1px solid #ccc;
-      padding: 10px; z-index: 999999;
-      font-size: 14px; font-family: sans-serif;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      max-width: 280px;
-    `;
-      // 确保按钮在同一行显示
+        position: fixed;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 10px;
+        z-index: 999999;
+        font-size: 14px;
+        font-family: sans-serif;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        max-width: 280px;
+        cursor: move;
+        user-select: none;
+        touch-action: none;
+      `;
+
+      // 恢复位置
+      if (settings.PANEL_X !== null && settings.PANEL_Y !== null) {
+        panel.style.left = `${settings.PANEL_X}px`;
+        panel.style.top = `${settings.PANEL_Y}px`;
+      } else {
+        panel.style.bottom = "20px";
+        panel.style.right = "20px";
+      }
+
       const buttons = panel.querySelectorAll("button");
       buttons.forEach((btn) => {
         btn.style.display = "inline-block";
@@ -156,7 +268,6 @@
   const inputBurl = document.getElementById("bUrl");
   const inputAPause = document.getElementById("aPause");
 
-  // 填入默认值
   inputAmin.value = settings.A_MIN;
   inputAmax.value = settings.A_MAX;
   inputBint.value = settings.B_INTERVAL;
@@ -167,7 +278,7 @@
 
   function updateSettingsFromInputs() {
     settings.A_MIN = Math.max(1, parseInt(inputAmin.value));
-    settings.A_MAX = Math.max(settings.A_MIN, parseInt(inputAmax.value)); // 确保A_MIN小于等于A_MAX
+    settings.A_MAX = Math.max(settings.A_MIN, parseInt(inputAmax.value));
     inputAmax.value = settings.A_MAX;
 
     settings.B_INTERVAL = Math.max(1, parseInt(inputBint.value));
@@ -229,19 +340,17 @@
     }
   }
 
-  let currentAudio = null; // Declare currentAudio at the top level
+  let currentAudio = null;
 
   function toggleMute() {
     isMuted = !isMuted;
     muteBtn.textContent = isMuted ? "🔇 已静音" : "🔈 静音";
     log(isMuted ? "已静音" : "取消静音");
 
-    // 如果静音，暂停当前播放的音频
     if (isMuted && currentAudio) {
       currentAudio.pause();
       log("当前音频已暂停");
     } else if (!isMuted && currentAudio && !currentAudio.ended) {
-      // 如果取消静音且音频未结束，继续播放音频
       currentAudio
         .play()
         .then(() => {
@@ -260,7 +369,6 @@
       return;
     }
 
-    // 防抖：如果当前有音频正在播放，则不进行新的播放
     if (currentAudio && !currentAudio.ended) {
       log(
         `当前正在播放 ${
@@ -273,12 +381,12 @@
     notify(label, `即将播放 ${label}`);
     if (isMuted) {
       log(`${label} 静音中，跳过播放`);
-      setTimeout(onComplete, 100); // Skip playback
+      setTimeout(onComplete, 100);
       return;
     }
 
     const audio = new Audio(url);
-    currentAudio = audio; // Assign the current audio object
+    currentAudio = audio;
     audio
       .play()
       .then(() => {
@@ -294,12 +402,10 @@
       });
   }
 
-  // 试听 A 音
   aPreviewBtn.addEventListener("click", () => {
     playSoundAndThen(settings.A_URL, "A 提示音", () => {});
   });
 
-  // 试听 B 音
   bPreviewBtn.addEventListener("click", () => {
     playSoundAndThen(settings.B_URL, "B 提示音", () => {});
   });
@@ -384,7 +490,6 @@
     log(isPaused ? "已暂停播放" : "已恢复播放");
 
     if (isPaused) {
-      // 暂停时，记录剩余时间并清除定时器
       if (nextATime) {
         window.__pausedATimeRemaining = Math.max(0, nextATime - Date.now());
         clearTimeout(aTimer);
@@ -393,10 +498,8 @@
         window.__pausedBTimeRemaining = Math.max(0, nextBTime - Date.now());
         clearTimeout(bTimer);
       }
-      // 暂停倒计时更新
       clearInterval(countdownInterval);
     } else {
-      // 恢复时，使用剩余时间重新设置定时器
       if (window.__pausedATimeRemaining) {
         nextATime = Date.now() + window.__pausedATimeRemaining;
         aTimer = setTimeout(() => {
@@ -421,10 +524,8 @@
         }, window.__pausedBTimeRemaining);
         window.__pausedBTimeRemaining = null;
       }
-      // 恢复倒计时更新
       startCountdownUpdater();
     }
-    // 立即更新一次显示
     updateCountdownDisplay();
   }
 
@@ -435,9 +536,7 @@
   }
 
   function resetSettings() {
-    // 重置设置为默认值
     settings = { ...defaultSettings };
-    // 更新输入框的值
     inputAmin.value = settings.A_MIN;
     inputAmax.value = settings.A_MAX;
     inputBint.value = settings.B_INTERVAL;
@@ -445,9 +544,16 @@
     inputAurl.value = settings.A_URL;
     inputBurl.value = settings.B_URL;
     inputAPause.value = settings.A_PAUSE;
-    // 清除缓存
     localStorage.removeItem("sound_timer_settings");
     log("设置已重置为默认值");
+
+    // 重置面板位置
+    panel.style.bottom = "20px";
+    panel.style.right = "20px";
+    panel.style.left = "auto";
+    panel.style.top = "auto";
+    settings.PANEL_X = null;
+    settings.PANEL_Y = null;
   }
 
   document.getElementById("startBtn").addEventListener("click", start);
