@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         提示音定时器（自定义间隔 + 保存设置 + 自定义声音）
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  自定义提示音间隔，自定义声音，自动保存设置，支持通知与静音等功能。
 // @author       Knan
 // @match        *://*/*
@@ -56,44 +56,49 @@
 
   const panel = document.createElement("div");
   panel.style.cssText = `
-          position: fixed; bottom: 20px; right: 20px;
-          background: white; border: 1px solid #ccc;
-          padding: 10px; z-index: 999999;
-          font-size: 14px; font-family: sans-serif;
-          box-shadow: 0 0 10px rgba(0,0,0,0.2);
-          max-width: 280px;
-        `;
+            position: fixed; bottom: 20px; right: 20px;
+            background: white; border: 1px solid #ccc;
+            padding: 10px; z-index: 999999;
+            font-size: 14px; font-family: sans-serif;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            max-width: 280px;
+          `;
   panel.innerHTML = `
-          <strong>提示音定时器</strong><br/>
-          <button id="startBtn">开始</button>
-          <button id="stopBtn">停止</button>
-          <button id="pauseBtn">⏸ 暂停</button>
-          <button id="muteBtn">🔈 静音</button>
-          <button id="notifyBtn">🔔 通知</button>
-          <hr/>
-          <div>
-            <b>间隔设置：</b><br/>
-            A 音间隔：最小 <input id="aMin" type="number" style="width: 40px;" /> ~
-            最大 <input id="aMax" type="number" style="width: 40px;" /> 分钟<br/>
-            B 音间隔 <input id="bInt" type="number" style="width: 50px;" /> 分钟，播放后暂停 <input id="bPause" type="number" style="width: 50px;" /> 分钟<br/>
-            A 音播放后暂停时间：<input id="aPause" type="number" style="width: 50px;" /> 秒
-          </div>
-          <hr/>
-          <div>
-            <b>声音链接（可选）：</b><br/>
-            A 音 URL：<input id="aUrl" type="text" placeholder="mp3/ogg 链接" style="width: 100%;" /><br/>
-            B 音 URL：<input id="bUrl" type="text" placeholder="mp3/ogg 链接" style="width: 100%;" />
-          </div>
-          <div style="margin-top: 10px;">
-            下次 A 音：<span id="nextA">--</span><br/>
-            下次 B 音：<span id="nextB">--</span>
-          </div>
-          <hr/>
-          <div>
-            <button id="aPreviewBtn">试听 A 音</button>
-            <button id="bPreviewBtn">试听 B 音</button>
-          </div>
-        `;
+            <strong>提示音定时器</strong><br/>
+            <button id="startBtn">开始</button>
+            <button id="stopBtn">停止</button>
+            <button id="pauseBtn">⏸ 暂停</button>
+            <button id="muteBtn">🔈 静音</button>
+            <button id="notifyBtn">🔔 通知</button>
+            <hr/>
+            <div>
+              <b>A 音间隔设置：</b><br/>
+              A 音间隔：最小 <input id="aMin" type="number" style="width: 40px;" /> ~
+              最大 <input id="aMax" type="number" style="width: 40px;" /> 分钟<br/>
+              播放后暂停：<input id="aPause" type="number" style="width: 50px;" /> 秒
+            </div>
+            <hr/>
+            <div>
+              <b>B 音间隔设置：</b><br/>
+              B 音间隔 <input id="bInt" type="number" style="width: 50px;" /> 分钟<br/>
+              播放后暂停 <input id="bPause" type="number" style="width: 50px;" /> 分钟
+            </div>
+            <hr/>
+            <div>
+              <b>声音链接（可选）：</b><br/>
+              A 音 URL：<input id="aUrl" type="text" placeholder="mp3/ogg 链接" style="width: 100%;" /><br/>
+              B 音 URL：<input id="bUrl" type="text" placeholder="mp3/ogg 链接" style="width: 100%;" />
+            </div>
+            <div style="margin-top: 10px;">
+              下次 A 音：<span id="nextA">--</span><br/>
+              下次 B 音：<span id="nextB">--</span>
+            </div>
+            <hr/>
+            <div>
+              <button id="aPreviewBtn">试听 A 音</button>
+              <button id="bPreviewBtn">试听 B 音</button>
+            </div>
+          `;
   document.body.appendChild(panel);
 
   const nextADisplay = document.getElementById("nextA");
@@ -110,7 +115,7 @@
   const inputBpause = document.getElementById("bPause");
   const inputAurl = document.getElementById("aUrl");
   const inputBurl = document.getElementById("bUrl");
-  const inputAPause = document.getElementById("aPause"); // 新增的输入字段
+  const inputAPause = document.getElementById("aPause");
 
   // 填入默认值
   inputAmin.value = settings.A_MIN;
@@ -119,14 +124,14 @@
   inputBpause.value = settings.B_PAUSE;
   inputAurl.value = settings.A_URL || "";
   inputBurl.value = settings.B_URL || "";
-  inputAPause.value = settings.A_PAUSE; // 填入A音暂停的默认值
+  inputAPause.value = settings.A_PAUSE;
 
   function updateSettingsFromInputs() {
     settings.A_MIN = Math.max(1, parseInt(inputAmin.value));
     settings.A_MAX = Math.max(settings.A_MIN, parseInt(inputAmax.value));
     settings.B_INTERVAL = Math.max(1, parseInt(inputBint.value));
     settings.B_PAUSE = Math.max(0, parseInt(inputBpause.value));
-    settings.A_PAUSE = Math.max(1, parseInt(inputAPause.value)); // 更新 A 音暂停时间
+    settings.A_PAUSE = Math.max(1, parseInt(inputAPause.value));
     settings.A_URL = inputAurl.value.trim() || defaultSettings.A_URL;
     settings.B_URL = inputBurl.value.trim() || defaultSettings.B_URL;
     saveSettings();
@@ -138,7 +143,7 @@
   inputBpause.addEventListener("change", updateSettingsFromInputs);
   inputAurl.addEventListener("input", updateSettingsFromInputs);
   inputBurl.addEventListener("input", updateSettingsFromInputs);
-  inputAPause.addEventListener("change", updateSettingsFromInputs); // 监听 A 音暂停时间变化
+  inputAPause.addEventListener("change", updateSettingsFromInputs);
 
   function log(msg) {
     console.log(`[提示音定时器] ${msg}`);
