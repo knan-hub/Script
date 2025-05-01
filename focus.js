@@ -31,6 +31,8 @@
       const saved = localStorage.getItem("sound_timer_settings");
       if (saved) {
         Object.assign(settings, JSON.parse(saved));
+        // 确保加载的设置中A_MAX不超过5分钟
+        settings.A_MAX = Math.min(5, settings.A_MAX);
       }
     } catch (e) {
       console.warn("加载设置失败", e);
@@ -119,7 +121,7 @@
 
   // 填入默认值
   inputAmin.value = settings.A_MIN;
-  inputAmax.value = settings.A_MAX;
+  inputAmax.value = settings.A_MAX = Math.min(5, settings.A_MAX); // 确保初始值不超过5分钟
   inputBint.value = settings.B_INTERVAL;
   inputBpause.value = settings.B_PAUSE;
   inputAurl.value = settings.A_URL || "";
@@ -129,6 +131,10 @@
   function updateSettingsFromInputs() {
     settings.A_MIN = Math.max(1, parseInt(inputAmin.value));
     settings.A_MAX = Math.max(settings.A_MIN, parseInt(inputAmax.value));
+    // 确保A_MAX不超过5分钟，并更新输入框显示
+    settings.A_MAX = Math.min(5, settings.A_MAX);
+    inputAmax.value = settings.A_MAX;
+
     settings.B_INTERVAL = Math.max(1, parseInt(inputBint.value));
     settings.B_PAUSE = Math.max(0, parseInt(inputBpause.value));
     settings.A_PAUSE = Math.max(1, parseInt(inputAPause.value));
@@ -232,6 +238,9 @@
     if (!isRunning) return;
     updateSettingsFromInputs();
 
+    // 确保A_MAX不超过5分钟
+    settings.A_MAX = Math.min(5, settings.A_MAX);
+
     const delay =
       Math.floor(
         Math.random() * (settings.A_MAX - settings.A_MIN + 1) * 60 * 1000
@@ -312,6 +321,50 @@
     isPaused = !isPaused;
     pauseBtn.textContent = isPaused ? "▶️ 恢复" : "⏸ 暂停";
     log(isPaused ? "已暂停播放" : "已恢复播放");
+
+    if (isPaused) {
+      // 暂停时，记录剩余时间并清除定时器
+      if (nextATime) {
+        window.__pausedATimeRemaining = Math.max(0, nextATime - Date.now());
+        clearTimeout(aTimer);
+      }
+      if (nextBTime) {
+        window.__pausedBTimeRemaining = Math.max(0, nextBTime - Date.now());
+        clearTimeout(bTimer);
+      }
+      // 暂停倒计时更新
+      clearInterval(countdownInterval);
+    } else {
+      // 恢复时，使用剩余时间重新设置定时器
+      if (window.__pausedATimeRemaining) {
+        nextATime = Date.now() + window.__pausedATimeRemaining;
+        aTimer = setTimeout(() => {
+          playSoundAndThen(settings.A_URL, "A 提示音", () => {
+            log(`A 音播放后暂停 ${settings.A_PAUSE} 秒...`);
+            nextATime = Date.now() + settings.A_PAUSE * 1000;
+            updateCountdownDisplay();
+            setTimeout(scheduleRandomA, settings.A_PAUSE * 1000);
+          });
+        }, window.__pausedATimeRemaining);
+        window.__pausedATimeRemaining = null;
+      }
+      if (window.__pausedBTimeRemaining) {
+        nextBTime = Date.now() + window.__pausedBTimeRemaining;
+        bTimer = setTimeout(() => {
+          playSoundAndThen(settings.B_URL, "B 提示音", () => {
+            log(`B 音播放后暂停 ${settings.B_PAUSE} 分钟...`);
+            nextBTime = Date.now() + settings.B_PAUSE * 60 * 1000;
+            updateCountdownDisplay();
+            setTimeout(scheduleLoopB, settings.B_PAUSE * 60 * 1000);
+          });
+        }, window.__pausedBTimeRemaining);
+        window.__pausedBTimeRemaining = null;
+      }
+      // 恢复倒计时更新
+      startCountdownUpdater();
+    }
+    // 立即更新一次显示
+    updateCountdownDisplay();
   }
 
   function toggleNotify() {
