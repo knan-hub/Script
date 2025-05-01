@@ -70,6 +70,7 @@
             <button id="startBtn">开始</button>
             <button id="stopBtn">停止</button>
             <button id="pauseBtn">⏸ 暂停</button>
+            <button id="resetBtn">重置</button>
             <button id="muteBtn">🔈 静音</button>
             <button id="notifyBtn">🔔 通知</button>
             <hr/>
@@ -102,6 +103,9 @@
             </div>
           `;
   document.body.appendChild(panel);
+
+  const resetBtn = document.getElementById("resetBtn");
+  resetBtn.addEventListener("click", resetSettings);
 
   const nextADisplay = document.getElementById("nextA");
   const nextBDisplay = document.getElementById("nextB");
@@ -396,6 +400,22 @@
     isNotifyEnabled = !isNotifyEnabled;
     notifyBtn.textContent = isNotifyEnabled ? "🔔 通知" : "🔕 静默";
     log(isNotifyEnabled ? "已开启通知" : "已关闭通知");
+  }
+
+  function resetSettings() {
+    // 重置设置为默认值
+    settings = { ...defaultSettings };
+    // 更新输入框的值
+    inputAmin.value = settings.A_MIN;
+    inputAmax.value = settings.A_MAX;
+    inputBint.value = settings.B_INTERVAL;
+    inputBpause.value = settings.B_PAUSE;
+    inputAurl.value = settings.A_URL;
+    inputBurl.value = settings.B_URL;
+    inputAPause.value = settings.A_PAUSE;
+    // 清除缓存
+    localStorage.removeItem("sound_timer_settings");
+    log("设置已重置为默认值");
   }
 
   document.getElementById("startBtn").addEventListener("click", start);
