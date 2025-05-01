@@ -105,6 +105,41 @@
   const resetBtn = document.getElementById("resetBtn");
   resetBtn.addEventListener("click", resetSettings);
 
+  const minimizeBtn = document.createElement("button");
+  minimizeBtn.textContent = "🔽";
+  panel.insertBefore(minimizeBtn, panel.firstChild);
+
+  let isMinimized = false;
+
+  minimizeBtn.addEventListener("click", () => {
+    isMinimized = !isMinimized;
+    minimizeBtn.textContent = isMinimized ? "🔼" : "🔽";
+    const elements = panel.querySelectorAll("button, div, hr");
+    elements.forEach((el) => {
+      if (el !== minimizeBtn) {
+        el.style.display = isMinimized ? "none" : "block";
+      }
+    });
+
+    // 恢复时重新设置面板样式
+    if (!isMinimized) {
+      panel.style.cssText = `
+      position: fixed; bottom: 20px; right: 20px;
+      background: white; border: 1px solid #ccc;
+      padding: 10px; z-index: 999999;
+      font-size: 14px; font-family: sans-serif;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      max-width: 280px;
+    `;
+      // 确保按钮在同一行显示
+      const buttons = panel.querySelectorAll("button");
+      buttons.forEach((btn) => {
+        btn.style.display = "inline-block";
+        btn.style.margin = "2px";
+      });
+    }
+  });
+
   const nextADisplay = document.getElementById("nextA");
   const nextBDisplay = document.getElementById("nextB");
   const pauseBtn = document.getElementById("pauseBtn");
