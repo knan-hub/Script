@@ -231,7 +231,11 @@
 
     // 防抖：如果当前有音频正在播放，则不进行新的播放
     if (currentAudio && !currentAudio.ended) {
-      log(`${label} 正在播放中，跳过新的播放请求`);
+      log(
+        `当前正在播放 ${
+          currentAudio.src.includes(settings.A_URL) ? "A 提示音" : "B 提示音"
+        }，跳过新的播放请求`
+      );
       return;
     }
 
