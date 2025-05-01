@@ -31,8 +31,6 @@
       const saved = localStorage.getItem("sound_timer_settings");
       if (saved) {
         Object.assign(settings, JSON.parse(saved));
-        // 确保加载的设置中A_MAX不超过5分钟
-        settings.A_MAX = Math.min(5, settings.A_MAX);
       }
     } catch (e) {
       console.warn("加载设置失败", e);
@@ -76,15 +74,15 @@
             <hr/>
             <div>
               <b>A 音间隔设置：</b><br/>
-              A 音间隔：最小 <input id="aMin" type="number" style="width: 40px;" /> ~
-              最大 <input id="aMax" type="number" style="width: 40px;" /> 分钟<br/>
-              播放后暂停：<input id="aPause" type="number" style="width: 50px;" /> 秒
+              A 音间隔：最小 <input id="aMin" type="number" style="width: 40px;" min="1" /> ~
+              最大 <input id="aMax" type="number" style="width: 40px;" min="1" /> 分钟<br/>
+              播放后暂停：<input id="aPause" type="number" style="width: 50px;" min="1" /> 秒
             </div>
             <hr/>
             <div>
               <b>B 音间隔设置：</b><br/>
-              B 音间隔 <input id="bInt" type="number" style="width: 50px;" /> 分钟<br/>
-              播放后暂停 <input id="bPause" type="number" style="width: 50px;" /> 分钟
+              B 音间隔 <input id="bInt" type="number" style="width: 50px;" min="1" /> 分钟<br/>
+              播放后暂停 <input id="bPause" type="number" style="width: 50px;" min="1" /> 分钟
             </div>
             <hr/>
             <div>
@@ -125,7 +123,7 @@
 
   // 填入默认值
   inputAmin.value = settings.A_MIN;
-  inputAmax.value = settings.A_MAX = Math.min(5, settings.A_MAX); // 确保初始值不超过5分钟
+  inputAmax.value = settings.A_MAX;
   inputBint.value = settings.B_INTERVAL;
   inputBpause.value = settings.B_PAUSE;
   inputAurl.value = settings.A_URL || "";
@@ -134,13 +132,11 @@
 
   function updateSettingsFromInputs() {
     settings.A_MIN = Math.max(1, parseInt(inputAmin.value));
-    settings.A_MAX = Math.max(settings.A_MIN, parseInt(inputAmax.value));
-    // 确保A_MAX不超过5分钟，并更新输入框显示
-    settings.A_MAX = Math.min(5, settings.A_MAX);
+    settings.A_MAX = Math.max(settings.A_MIN, parseInt(inputAmax.value)); // 确保A_MIN小于等于A_MAX
     inputAmax.value = settings.A_MAX;
 
     settings.B_INTERVAL = Math.max(1, parseInt(inputBint.value));
-    settings.B_PAUSE = Math.max(0, parseInt(inputBpause.value));
+    settings.B_PAUSE = Math.max(1, parseInt(inputBpause.value));
     settings.A_PAUSE = Math.max(1, parseInt(inputAPause.value));
     settings.A_URL = inputAurl.value.trim() || defaultSettings.A_URL;
     settings.B_URL = inputBurl.value.trim() || defaultSettings.B_URL;
@@ -276,9 +272,6 @@
   function scheduleRandomA() {
     if (!isRunning) return;
     updateSettingsFromInputs();
-
-    // 确保A_MAX不超过5分钟
-    settings.A_MAX = Math.min(5, settings.A_MAX);
 
     const delay =
       Math.floor(
