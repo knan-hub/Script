@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         提示音定时器（自定义间隔 + 保存设置 + 自定义声音）
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  自定义提示音间隔，自定义声音，自动保存设置，支持通知与静音等功能。
 // @author       Knan
 // @match        *://*/*
@@ -60,6 +60,8 @@
   function init() {
     loadSettings();
     createUI();
+    // 直接最小化
+    toggleMinimize(true);
     setupEventListeners();
   }
 
@@ -113,8 +115,11 @@
 
     // 面板HTML内容
     dom.panel.innerHTML = `
-      <button id="minimizeBtn">🔽</button>
-      <strong>提示音定时器</strong><br/>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <button id="minimizeBtn">🔽</button>
+        <strong>提示音定时器</strong>
+        <button id="closeBtn" style="color: red;">✖</button>
+      </div>
       <button id="startBtn">开始</button>
       <button id="stopBtn">停止</button>
       <button id="pauseBtn">⏸ 暂停</button>
@@ -203,6 +208,8 @@
     document
       .getElementById("bPreviewBtn")
       .addEventListener("click", () => previewSound("B"));
+    // 添加关闭按钮事件
+    document.getElementById("closeBtn").addEventListener("click", closePanel);
 
     // 输入框事件
     Object.keys(dom.inputs).forEach((key) => {
@@ -211,6 +218,28 @@
         dom.inputs[key].addEventListener("input", updateSettingsFromInputs);
       }
     });
+  }
+
+  // 关闭面板
+  function closePanel() {
+    // 停止所有定时器
+    stop();
+
+    // 保存当前设置
+    saveSettings();
+
+    // 清除缓存配置
+    localStorage.removeItem("sound_timer_settings");
+
+    // 移除面板
+    if (dom.panel && dom.panel.parentNode) {
+      dom.panel.parentNode.removeChild(dom.panel);
+    }
+
+    // 重置注入标记，允许重新注入
+    window.__soundTimerInjected = false;
+
+    log("面板已关闭");
   }
 
   // 拖拽开始
@@ -291,10 +320,16 @@
 
     const elements = dom.panel.querySelectorAll("button, div, hr");
     elements.forEach((el) => {
-      if (el !== minimizeBtn) {
+      if (el !== minimizeBtn && el.id !== "closeBtn") {
         el.style.display = state.isMinimized ? "none" : "block";
       }
     });
+
+    // 确保关闭按钮在最小化状态下仍然可见
+    const closeBtn = document.getElementById("closeBtn");
+    if (closeBtn) {
+      closeBtn.style.display = "block";
+    }
 
     if (!state.isMinimized) {
       // 恢复面板样式
@@ -327,6 +362,12 @@
         btn.style.display = "inline-block";
         btn.style.margin = "2px";
       });
+    } else {
+      // 在最小化状态下，确保标题和按钮在同一行
+      const headerDiv = dom.panel.querySelector("div");
+      if (headerDiv) {
+        headerDiv.style.display = "flex";
+      }
     }
   }
 
